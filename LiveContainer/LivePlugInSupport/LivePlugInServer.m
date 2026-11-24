@@ -32,6 +32,46 @@ static NSError *LCProcessError(NSString *description) {
 }
 
 
+static void LCCallKitProbe(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        dlopen("/System/Library/Frameworks/CallKit.framework/CallKit",
+               RTLD_NOW);
+
+        Class controllerClass = NSClassFromString(@"CXCallController");
+        Class transactionClass = NSClassFromString(@"CXTransaction");
+
+        NSString *path = [NSHomeDirectory()
+            stringByAppendingPathComponent:@"Documents/CallKitHostProbe.txt"];
+
+        if (!controllerClass || !transactionClass) {
+            [@"CallKit unavailable" writeToFile:path
+                atomically:YES encoding:NSUTF8StringEncoding error:nil];
+            return;
+        }
+
+        id controller = [[controllerClass alloc] init];
+        id transaction = [[transactionClass alloc] init];
+
+        SEL selector = NSSelectorFromString(
+            @"requestTransaction:completion:");
+
+        void (^completion)(NSError *) = ^(NSError *error) {
+            NSString *result = [NSString stringWithFormat:
+                @"Host PID: %d\nDomain: %@\nCode: %ld\nResult: %@",
+                getpid(), error.domain, (long)error.code,
+                error.localizedDescription ?: @"Success"];
+
+            [result writeToFile:path atomically:YES
+                encoding:NSUTF8StringEncoding error:nil];
+        };
+
+        void (*request)(id, SEL, id, id) =
+            (void *)[controller methodForSelector:selector];
+
+        request(controller, selector, transaction, completion);
+    });
+}
+
 @implementation LCLivePlugIn
 
 + (LCLivePlugIn *)processWithPID:(pid_t)pid {
@@ -67,6 +107,7 @@ static NSError *LCProcessError(NSString *description) {
 + (void)startServer {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+           LCCallKitProbe();
         launches = [NSMutableDictionary new];
         pendingConnections = [NSMutableDictionary new];
         pendingRequests = [NSMutableDictionary new];
