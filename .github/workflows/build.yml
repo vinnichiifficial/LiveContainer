@@ -56,8 +56,7 @@ jobs:
       - name: Prepare Dependencies
         run: |
           sh .github/prepare_dependencies.sh
-          - name: Apply WhatsApp CallKit Relay
-        run: python3 whatsapp-callkit-relay.py
+          python3 whatsapp-callkit-relay.py
       - name: Archive
         env:
           scheme: ${{ steps.scheme.outputs.scheme }}
