@@ -49,7 +49,11 @@ static void LCCallKitProbe(void) {
             return;
         }
 
-        id controller = [[controllerClass alloc] init];
+[@"Host probe started" writeToFile:path
+    atomically:YES encoding:NSUTF8StringEncoding error:nil];
+
+static id controller;
+controller = [[controllerClass alloc] init];
         id transaction = [[transactionClass alloc] init];
 
         SEL selector = NSSelectorFromString(
